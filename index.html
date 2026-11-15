@@ -51,6 +51,19 @@ else{
   const [name,color]=CATS[card.c]||["",""];
   $("cat").textContent=name;document.documentElement.style.setProperty("--c",color);
   $("num").textContent="Nº "+id;
+  if(card.t==="it"||card.t==="mp3"){
+    window.AU=new Audio();AU.preload="auto";
+    AU.onplaying=()=>{setUI(true);msg("")};AU.onpause=()=>setUI(false);AU.onended=()=>setUI(false);
+    AU.onerror=()=>{setUI(false);msg("Este audio no carga. Saltad la carta.")};
+    if(card.t==="mp3"){AU.src="audio/"+id+".mp3";ytReady=true}
+    else{
+      window.__it=r=>{const t=(r.results||[]).find(x=>x.previewUrl);
+        if(!t){msg("Este audio no carga. Saltad la carta.");return}
+        AU.src=t.previewUrl;ytReady=true;if(wantPlay)AU.play()};
+      const q=card.i?"lookup?id="+card.i:"search?entity=song&limit=5&term="+encodeURIComponent(card.q);
+      const s=document.createElement("script");s.src="https://itunes.apple.com/"+q+"&country=ES&callback=__it";document.head.appendChild(s);
+    }
+  }
   if(card.t==="yt"){
     const s=document.createElement("script");s.src="https://www.youtube.com/iframe_api";document.head.appendChild(s);
     window.onYouTubeIframeAPIReady=()=>{
@@ -74,6 +87,7 @@ function toggle(restart){
   if(!card)return;
   if(card.t==="tts"){ if(playing&&!restart){speechSynthesis.cancel();setUI(false)} else speak(); return; }
   if(!ytReady){wantPlay=true;msg("Cargando…");return}
+  if(window.AU){ if(restart){AU.currentTime=0;AU.play();return} playing?AU.pause():AU.play(); return; }
   if(restart){yt.seekTo(card.s||0,true);yt.playVideo();return}
   playing?yt.pauseVideo():yt.playVideo();
 }
