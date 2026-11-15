@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Línea del Tiempo</title>
+<style>
+  :root{--bg:#111;--fg:#f4f1ea;--muted:#8a867d;--c:#e8b33a}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif}
+  main{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:32px 20px}
+  .tag{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--c);font-weight:700}
+  .num{font-size:14px;color:var(--muted);letter-spacing:.1em}
+  #play{width:200px;height:200px;border-radius:50%;border:none;background:var(--c);color:#111;display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 0 var(--c);transition:transform .15s}
+  #play:active{transform:scale(.96)}
+  #play.on{animation:pulse 1.6s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--c) 60%,transparent)}100%{box-shadow:0 0 0 40px transparent}}
+  #play svg{width:84px;height:84px}
+  .row{display:flex;gap:12px}
+  .row button{background:#222;color:var(--fg);border:1px solid #333;border-radius:999px;padding:12px 20px;font-size:15px;cursor:pointer}
+  #msg{color:var(--muted);font-size:14px;text-align:center;max-width:300px;min-height:20px}
+  /* El vídeo existe pero queda tapado: nadie ve el título */
+  #ytwrap{position:fixed;left:0;bottom:0;width:200px;height:200px;overflow:hidden;pointer-events:none;z-index:0}
+  #cover{position:fixed;left:0;bottom:0;width:200px;height:200px;background:var(--bg);z-index:1}
+  main{position:relative;z-index:2}
+</style>
+</head>
+<body>
+<div id="ytwrap"><div id="yt"></div></div><div id="cover"></div>
+<main>
+  <div class="tag" id="cat">—</div>
+  <button id="play" aria-label="Reproducir"><svg viewBox="0 0 24 24" fill="currentColor" id="ico"><path d="M8 5v14l11-7z"/></svg></button>
+  <div class="row"><button id="again">↺ Desde el principio</button></div>
+  <div id="msg">Toca para escuchar</div>
+  <div class="num" id="num"></div>
+</main>
+<script src="cards.js"></script>
+<script>
+const CATS={musica:["Canciones","#e8b33a"],electronica:["Electrónica y festivales","#3ad1e8"],cine:["Pelis míticas","#e8553a"],tele:["Tele y series","#b07cf0"],anuncios:["Anuncios","#f06aa8"],deporte:["Deporte","#4fd17a"],historia:["Historia y momentos","#d9d2c0"],tech:["Tech y videojuegos","#7aa7ff"]};
+const DECK=JSON.parse(decodeURIComponent(escape(atob(window.__D.split("").reverse().join("")))));
+const id=(location.hash||location.search).replace(/^[#?]c?=?/,"").toUpperCase();
+const card=DECK[id];
+const $=s=>document.getElementById(s), msg=t=>$("msg").textContent=t;
+const PLAY='<path d="M8 5v14l11-7z"/>', PAUSE='<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
+let playing=false, yt=null, ytReady=false, wantPlay=false;
+function setUI(on){playing=on;$("ico").innerHTML=on?PAUSE:PLAY;$("play").classList.toggle("on",on)}
+
+if(!card){$("cat").textContent="Carta no encontrada";msg("Vuelve a escanear el QR");$("play").disabled=true}
+else{
+  const [name,color]=CATS[card.c]||["",""];
+  $("cat").textContent=name;document.documentElement.style.setProperty("--c",color);
+  $("num").textContent="Nº "+id;
+  if(card.t==="yt"){
+    const s=document.createElement("script");s.src="https://www.youtube.com/iframe_api";document.head.appendChild(s);
+    window.onYouTubeIframeAPIReady=()=>{
+      yt=new YT.Player("yt",{width:200,height:200,videoId:card.v,
+        playerVars:{start:card.s||0,playsinline:1,controls:0,disablekb:1,rel:0,fs:0,iv_load_policy:3},
+        events:{onReady:()=>{ytReady=true;if(wantPlay)yt.playVideo()},
+          onStateChange:e=>{if(e.data===1){setUI(true);msg("")}else if(e.data===2||e.data===0)setUI(false)},
+          onError:()=>{setUI(false);msg("Este audio no carga. Saltad la carta.")}}});
+    };
+  }
+}
+function speak(){
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(card.x);u.lang=card.l;u.rate=.95;
+  const vs=speechSynthesis.getVoices(), pre=card.l.slice(0,2);
+  const v=vs.find(v=>v.lang.replace("_","-")===card.l)||vs.find(v=>v.lang.startsWith(pre));
+  if(v)u.voice=v; else if(pre==="ca")msg("Tu móvil no tiene voz en catalán: que lo lea otro móvil 🙂");
+  u.onend=()=>setUI(false);speechSynthesis.speak(u);setUI(true);
+}
+function toggle(restart){
+  if(!card)return;
+  if(card.t==="tts"){ if(playing&&!restart){speechSynthesis.cancel();setUI(false)} else speak(); return; }
+  if(!ytReady){wantPlay=true;msg("Cargando…");return}
+  if(restart){yt.seekTo(card.s||0,true);yt.playVideo();return}
+  playing?yt.pauseVideo():yt.playVideo();
+}
+$("play").onclick=()=>toggle(false);
+$("again").onclick=()=>toggle(true);
+speechSynthesis&&speechSynthesis.getVoices();
+window.addEventListener("hashchange",()=>location.reload());
+</script>
+</body>
+</html>
