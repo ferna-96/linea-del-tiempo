@@ -71,7 +71,7 @@ else{
     // Primero intenta el clip propio (sin anuncios); si no existe, YouTube.
     window.AU=new Audio();AU.preload="auto";
     AU.onplaying=()=>{setUI(true);msg("")};AU.onpause=()=>setUI(false);AU.onended=()=>setUI(false);
-    AU.onloadedmetadata=()=>{if(card.s)AU.currentTime=card.s;ytReady=true;if(wantPlay)AU.play()};
+    AU.onloadedmetadata=()=>{ytReady=true;if(wantPlay)AU.play()};
     AU.onerror=()=>{window.AU=null;ytReady=false;loadYT()};
     AU.src="audio/"+id+".m4a";
   }
@@ -99,7 +99,7 @@ function toggle(restart){
   if(!card)return;
   if(card.t==="tts"){ if(playing&&!restart){speechSynthesis.cancel();setUI(false)} else speak(); return; }
   if(!ytReady){wantPlay=true;msg("Cargando…");return}
-  if(window.AU){ if(restart){AU.currentTime=(card.t==="yt"&&card.s)||0;AU.play();return} playing?AU.pause():AU.play(); return; }
+  if(window.AU){ if(restart){AU.currentTime=0;AU.play();return} playing?AU.pause():AU.play(); return; }
   if(restart){yt.seekTo(card.s||0,true);yt.playVideo();return}
   playing?yt.pauseVideo():yt.playVideo();
 }
